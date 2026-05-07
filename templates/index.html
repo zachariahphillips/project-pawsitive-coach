@@ -6,6 +6,8 @@
     <title>Pawsitive Coach - AI Dog Training Assistant</title>
     <link rel="icon" href="/static/logo.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -504,6 +506,59 @@
             border: 2px solid #f0e4d4;
             border-bottom-left-radius: 6px;
             box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+            white-space: normal;
+        }
+
+        .message.assistant .bubble p {
+            margin: 0 0 8px 0;
+        }
+
+        .message.assistant .bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message.assistant .bubble strong {
+            font-weight: 800;
+            color: #92400e;
+        }
+
+        .message.assistant .bubble em {
+            font-style: italic;
+        }
+
+        .message.assistant .bubble ul,
+        .message.assistant .bubble ol {
+            margin: 4px 0 8px 0;
+            padding-left: 22px;
+        }
+
+        .message.assistant .bubble ul:last-child,
+        .message.assistant .bubble ol:last-child {
+            margin-bottom: 0;
+        }
+
+        .message.assistant .bubble li {
+            margin-bottom: 4px;
+        }
+
+        .message.assistant .bubble li:last-child {
+            margin-bottom: 0;
+        }
+
+        .message.assistant .bubble li > ul,
+        .message.assistant .bubble li > ol {
+            margin: 4px 0;
+        }
+
+        .message.assistant .bubble a {
+            color: #b45309;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            font-weight: 700;
+        }
+
+        .message.assistant .bubble a:hover {
+            color: #92400e;
         }
 
         .typing .bubble {
@@ -807,6 +862,10 @@
             border-color: #4a3820;
             box-shadow: 0 1px 4px rgba(0,0,0,0.15);
         }
+
+        body.dark .message.assistant .bubble strong { color: #fde68a; }
+        body.dark .message.assistant .bubble a { color: #fbbf24; }
+        body.dark .message.assistant .bubble a:hover { color: #fde68a; }
 
         body.dark .typing .bubble { color: #a08060; }
         body.dark .timestamp { color: #6b5535; }
@@ -1114,6 +1173,29 @@
             return new Date(date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
         }
 
+        if (typeof marked !== 'undefined') {
+            marked.setOptions({ breaks: true, gfm: true });
+        }
+
+        if (typeof DOMPurify !== 'undefined') {
+            DOMPurify.addHook('afterSanitizeAttributes', function (node) {
+                if (node.tagName === 'A') {
+                    node.setAttribute('target', '_blank');
+                    node.setAttribute('rel', 'noopener noreferrer');
+                }
+            });
+        }
+
+        function renderMarkdown(text) {
+            if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            const rawHtml = marked.parse(text);
+            return DOMPurify.sanitize(rawHtml);
+        }
+
         function renderMessageBubble(role, text, time) {
             const msg = document.createElement('div');
             msg.className = `message ${role}`;
@@ -1131,7 +1213,11 @@
 
             const bubble = document.createElement('div');
             bubble.className = 'bubble';
-            bubble.textContent = text;
+            if (role === 'assistant') {
+                bubble.innerHTML = renderMarkdown(text);
+            } else {
+                bubble.textContent = text;
+            }
 
             msg.appendChild(avatar);
             msg.appendChild(bubble);

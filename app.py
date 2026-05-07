@@ -38,6 +38,13 @@ SYSTEM_PROMPT = (
     "\n"
     "Keep responses concise but thorough. Use short paragraphs for readability. "
     "If you don't know something, say so honestly."
+    "\n\n"
+    "Formatting your responses:\n"
+    "- Use markdown to make answers easy to scan: **bold** for key terms, *italics* "
+    "for gentle emphasis, and bullet lists for steps or tips.\n"
+    "- Use numbered lists for step-by-step training plans.\n"
+    "- Keep paragraphs short (2-4 sentences) with line breaks between them.\n"
+    "- Don't over-format short, conversational replies — markdown should help, not clutter."
 )
 
 
