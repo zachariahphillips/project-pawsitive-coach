@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <title>Pawsitive Coach - AI Dog Training Assistant</title>
     <link rel="icon" href="/static/logo.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -16,8 +16,52 @@
             background: #fdf6ee;
             color: #3d2c1e;
             height: 100vh;
+            height: 100dvh;
             display: flex;
             flex-direction: row;
+        }
+
+        .hamburger {
+            display: none;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.15s;
+            flex-shrink: 0;
+        }
+
+        .hamburger:hover {
+            background: #fef3c7;
+        }
+
+        .hamburger span {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: #6b5535;
+            margin: 4px 0;
+            border-radius: 2px;
+        }
+
+        .sidebar-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 90;
+            opacity: 0;
+            transition: opacity 0.25s;
+        }
+
+        .sidebar-backdrop.show {
+            display: block;
+            opacity: 1;
+        }
+
+        #send-btn .send-icon {
+            display: none;
         }
 
         /* ---- Sidebar ---- */
@@ -953,10 +997,153 @@
             color: #fca5a5;
             border-color: #7f1d1d;
         }
+
+        body.dark .hamburger span { background: #c4a882; }
+        body.dark .hamburger:hover { background: #3d2e1a; }
+
+        /* ---- Mobile layout (≤640px) ---- */
+        @media (max-width: 640px) {
+            .hamburger {
+                display: block;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 280px;
+                max-width: 85vw;
+                z-index: 100;
+                transform: translateX(-100%);
+                transition: transform 0.25s ease;
+                box-shadow: 4px 0 16px rgba(0, 0, 0, 0.15);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            header {
+                padding: 10px 14px;
+                gap: 8px;
+            }
+
+            .header-left {
+                gap: 8px;
+                min-width: 0;
+                flex: 1;
+            }
+
+            .header-logo {
+                width: 32px;
+                height: 32px;
+            }
+
+            header h1 {
+                font-size: 16px;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            .badge {
+                display: none;
+            }
+
+            .chat-item-delete {
+                display: block;
+                font-size: 14px;
+            }
+
+            #chat-container {
+                padding: 16px;
+                gap: 12px;
+            }
+
+            .welcome {
+                max-width: 100%;
+                padding: 0 8px;
+            }
+
+            .welcome-logo {
+                width: 80px;
+                height: 80px;
+            }
+
+            .welcome h2 {
+                font-size: 22px;
+            }
+
+            .welcome p {
+                font-size: 14px;
+            }
+
+            .message {
+                max-width: 100%;
+            }
+
+            .message.assistant {
+                max-width: 95%;
+            }
+
+            .timestamp,
+            .message-footer {
+                padding: 0 44px;
+            }
+
+            #input-area {
+                padding: 12px 14px;
+            }
+
+            #input-form {
+                gap: 8px;
+            }
+
+            #message-input {
+                padding: 11px 16px;
+                font-size: 16px;
+            }
+
+            #send-btn {
+                padding: 0;
+                width: 44px;
+                height: 44px;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+            }
+
+            #send-btn .send-text {
+                display: none;
+            }
+
+            #send-btn .send-icon {
+                display: block;
+            }
+
+            .disclaimer {
+                font-size: 10px;
+                padding: 6px 14px 10px;
+            }
+
+            .profile-page {
+                padding: 24px 16px;
+            }
+
+            .char-counter {
+                font-size: 11px;
+                padding: 7px 12px;
+            }
+        }
     </style>
 </head>
 <body>
-    <aside class="sidebar">
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+
+    <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <button class="new-chat-btn" onclick="startNewChat()">+ New Chat</button>
         </div>
@@ -967,6 +1154,11 @@
 
     <div class="main-content">
         <header>
+            <button class="hamburger" onclick="toggleSidebar()" aria-label="Open menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <a class="header-left" onclick="showWelcome()">
                 <img src="/static/logo.png" alt="Pawsitive Coach" class="header-logo">
                 <h1>Pawsitive <span>Coach</span></h1>
@@ -998,7 +1190,12 @@
         <div id="input-area">
             <form id="input-form" onsubmit="sendMessage(event)">
                 <textarea id="message-input" placeholder="Ask about training, behavior, or your pup... (Shift+Enter for new line)" rows="1"></textarea>
-                <button type="submit" id="send-btn">Send</button>
+                <button type="submit" id="send-btn" aria-label="Send">
+                    <span class="send-text">Send</span>
+                    <svg class="send-icon" viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true">
+                        <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
             </form>
             <div id="char-counter" class="char-counter">
                 <span class="char-counter-msg" id="char-counter-msg"></span>
@@ -1042,6 +1239,20 @@
         const sendBtn = document.getElementById('send-btn');
         const welcome = document.getElementById('welcome');
         const chatListEl = document.getElementById('chat-list');
+        const sidebarEl = document.getElementById('sidebar');
+        const sidebarBackdropEl = document.getElementById('sidebar-backdrop');
+
+        /* ---- Mobile sidebar drawer ---- */
+        function toggleSidebar() {
+            const isOpen = sidebarEl.classList.contains('open');
+            sidebarEl.classList.toggle('open', !isOpen);
+            sidebarBackdropEl.classList.toggle('show', !isOpen);
+        }
+
+        function closeSidebar() {
+            sidebarEl.classList.remove('open');
+            sidebarBackdropEl.classList.remove('show');
+        }
 
         const STORAGE_KEY = 'pawsitive_chats';
         let allChats = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -1076,6 +1287,7 @@
                     if (e.target.classList.contains('chat-item-delete')) return;
                     if (e.target.tagName === 'INPUT' && !e.target.readOnly) return;
                     loadChat(chat.id);
+                    closeSidebar();
                 };
 
                 const title = document.createElement('input');
@@ -1123,6 +1335,7 @@
             fetch('/clear', { method: 'POST' });
             showWelcome();
             renderSidebar();
+            closeSidebar();
         }
 
         function showWelcome() {
@@ -1132,6 +1345,7 @@
             chatContainer.appendChild(welcome);
             welcome.style.display = '';
             renderSidebar();
+            closeSidebar();
         }
 
         function createChat(firstMessage) {
@@ -1466,6 +1680,7 @@
             document.querySelector('.disclaimer').style.display = 'none';
             profilePage.style.display = 'flex';
             document.getElementById('form-saved').style.display = 'none';
+            closeSidebar();
         }
 
         function closeProfilePage() {
