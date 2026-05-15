@@ -788,14 +788,18 @@
             margin-top: 0;
         }
 
-        .followups {
+        #followups-bar {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
-            margin-top: 4px;
-            padding: 0 48px;
             max-width: 700px;
+            margin: 0 auto 10px;
             animation: fadeIn 0.3s ease;
+        }
+
+        #followups-bar:empty {
+            display: none;
+            margin: 0;
         }
 
         .followup-chip {
@@ -1178,8 +1182,7 @@
             }
 
             .timestamp,
-            .message-footer,
-            .followups {
+            .message-footer {
                 padding: 0 44px;
             }
 
@@ -1279,6 +1282,7 @@
         </div>
 
         <div id="input-area">
+            <div id="followups-bar"></div>
             <form id="input-form" onsubmit="sendMessage(event)">
                 <textarea id="message-input" placeholder="Ask about training, behavior, or your pup... (Shift+Enter for new line)" rows="1"></textarea>
                 <button type="submit" id="send-btn" aria-label="Send">
@@ -1553,15 +1557,14 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
+        const followupsBar = document.getElementById('followups-bar');
+
         function clearFollowups() {
-            document.querySelectorAll('.followups').forEach(el => el.remove());
+            followupsBar.innerHTML = '';
         }
 
         function renderFollowups(followups) {
             if (!Array.isArray(followups) || followups.length === 0) return;
-
-            const container = document.createElement('div');
-            container.className = 'followups';
 
             followups.forEach(text => {
                 const chip = document.createElement('button');
@@ -1573,11 +1576,8 @@
                     messageInput.value = text;
                     sendMessage(new Event('submit'));
                 };
-                container.appendChild(chip);
+                followupsBar.appendChild(chip);
             });
-
-            chatContainer.appendChild(container);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
         async function copyMessage(btn, text) {
