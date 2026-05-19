@@ -57,6 +57,19 @@ SYSTEM_PROMPT = (
 )
 
 
+def _clean_str(value):
+    """Coerce a JSON value to a stripped string. Non-strings become ''."""
+    if isinstance(value, str):
+        return value.strip()
+    return ""
+
+
+def _get_json():
+    """Return the request body as a dict. Empty dict if missing or malformed."""
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
+
+
 def get_client():
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
@@ -89,11 +102,12 @@ def home():
 
 @app.route("/profile", methods=["POST"])
 def profile():
+    data = _get_json()
     session["dog_profile"] = {
-        "name": request.json.get("name", "").strip(),
-        "breed": request.json.get("breed", "").strip(),
-        "age": request.json.get("age", "").strip(),
-        "notes": request.json.get("notes", "").strip(),
+        "name": _clean_str(data.get("name")),
+        "breed": _clean_str(data.get("breed")),
+        "age": _clean_str(data.get("age")),
+        "notes": _clean_str(data.get("notes")),
     }
     session.modified = True
     return jsonify({"status": "saved"})
@@ -101,7 +115,8 @@ def profile():
 
 @app.route("/chat", methods=["POST"])
 def chat():
-    user_message = request.json.get("message", "").strip()
+    data = _get_json()
+    user_message = _clean_str(data.get("message"))
     if not user_message:
         return jsonify({"error": "Empty message"}), 400
 
@@ -154,12 +169,21 @@ def clear():
 
 @app.route("/restore", methods=["POST"])
 def restore():
-    messages = request.json.get("messages", [])
-    session["conversation"] = [
-        {"role": m["role"], "content": m["content"]}
-        for m in messages
-        if m.get("role") in ("user", "assistant")
-    ]
+    data = _get_json()
+    raw_messages = data.get("messages")
+    if not isinstance(raw_messages, list):
+        raw_messages = []
+
+    cleaned = []
+    for m in raw_messages:
+        if not isinstance(m, dict):
+            continue
+        role = m.get("role")
+        content = m.get("content")
+        if role in ("user", "assistant") and isinstance(content, str):
+            cleaned.append({"role": role, "content": content})
+
+    session["conversation"] = cleaned
     session.modified = True
     return jsonify({"status": "restored"})
 

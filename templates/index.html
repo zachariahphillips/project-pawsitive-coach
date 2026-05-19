@@ -1776,21 +1776,37 @@
 
         function renderDogCard() {
             const profile = getDogProfile();
+            dogCardEl.innerHTML = '';
+
+            const icon = document.createElement('span');
+            icon.className = 'dog-card-icon';
+            icon.textContent = '🐾';
+
+            const info = document.createElement('div');
+            info.className = 'dog-card-info';
+
             if (profile && profile.name) {
-                const detail = [profile.breed, profile.age].filter(Boolean).join(' · ');
-                dogCardEl.innerHTML =
-                    '<span class="dog-card-icon">🐾</span>' +
-                    '<div class="dog-card-info">' +
-                        '<div class="dog-card-name">' + profile.name + '</div>' +
-                        (detail ? '<div class="dog-card-detail">' + detail + '</div>' : '') +
-                    '</div>';
+                const name = document.createElement('div');
+                name.className = 'dog-card-name';
+                name.textContent = profile.name;
+                info.appendChild(name);
+
+                const detailText = [profile.breed, profile.age].filter(Boolean).join(' · ');
+                if (detailText) {
+                    const detail = document.createElement('div');
+                    detail.className = 'dog-card-detail';
+                    detail.textContent = detailText;
+                    info.appendChild(detail);
+                }
             } else {
-                dogCardEl.innerHTML =
-                    '<span class="dog-card-icon">🐾</span>' +
-                    '<div class="dog-card-info">' +
-                        '<div class="dog-card-cta">Set up your dog\'s profile</div>' +
-                    '</div>';
+                const cta = document.createElement('div');
+                cta.className = 'dog-card-cta';
+                cta.textContent = "Set up your dog's profile";
+                info.appendChild(cta);
             }
+
+            dogCardEl.appendChild(icon);
+            dogCardEl.appendChild(info);
         }
 
         function showProfilePage() {
