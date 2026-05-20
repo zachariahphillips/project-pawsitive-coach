@@ -1350,11 +1350,21 @@
         }
 
         const STORAGE_KEY = 'pawsitive_chats';
+        const CURRENT_CHAT_KEY = 'pawsitive_current_chat';
         let allChats = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
         let currentChatId = null;
 
         function saveChats() {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(allChats));
+        }
+
+        function setCurrentChatId(id) {
+            currentChatId = id;
+            if (id) {
+                localStorage.setItem(CURRENT_CHAT_KEY, id);
+            } else {
+                localStorage.removeItem(CURRENT_CHAT_KEY);
+            }
         }
 
         function getCurrentChat() {
@@ -1418,7 +1428,6 @@
             allChats = allChats.filter(c => c.id !== id);
             saveChats();
             if (currentChatId === id) {
-                currentChatId = null;
                 showWelcome();
             }
             renderSidebar();
@@ -1430,7 +1439,7 @@
         }
 
         function showWelcome() {
-            currentChatId = null;
+            setCurrentChatId(null);
             fetch('/clear', { method: 'POST' });
             clearFollowups();
             closeProfilePage();
@@ -1448,7 +1457,7 @@
                 messages: []
             };
             allChats.push(chat);
-            currentChatId = chat.id;
+            setCurrentChatId(chat.id);
             saveChats();
             renderSidebar();
             return chat;
@@ -1457,7 +1466,7 @@
         async function loadChat(id) {
             const chat = allChats.find(c => c.id === id);
             if (!chat) return;
-            currentChatId = id;
+            setCurrentChatId(id);
             closeProfilePage();
             clearFollowups();
             chatContainer.innerHTML = '';
@@ -1875,10 +1884,22 @@
             }
         }
 
+        function restoreLastChat() {
+            const savedId = localStorage.getItem(CURRENT_CHAT_KEY);
+            if (!savedId) return;
+            const chat = allChats.find(c => c.id === savedId);
+            if (!chat) {
+                localStorage.removeItem(CURRENT_CHAT_KEY);
+                return;
+            }
+            loadChat(savedId);
+        }
+
         /* ---- Init ---- */
         renderSidebar();
         renderDogCard();
         sendDogProfileToServer();
+        restoreLastChat();
         messageInput.focus();
     </script>
 </body>
