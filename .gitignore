@@ -2,6 +2,9 @@
 .env
 *.env
 
+# Server-side session files (contain user conversation state)
+flask_session/
+
 # Python
 __pycache__/
 *.py[cod]

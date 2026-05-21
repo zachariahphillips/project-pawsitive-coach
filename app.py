@@ -9,12 +9,24 @@ import os
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, jsonify, session
+from flask_session import Session
 from openai import OpenAI
 
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)
+
+# Stable signing key from env so sessions survive server restarts.
+# Falls back to a default for local dev — set FLASK_SECRET_KEY in .env for production.
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-me-for-production")
+
+# Server-side filesystem session store. Avoids the ~4KB browser cookie limit
+# that would otherwise drop long conversations and lose AI context.
+app.config["SESSION_TYPE"] = "filesystem"
+app.config["SESSION_FILE_DIR"] = "./flask_session"
+app.config["SESSION_PERMANENT"] = False
+app.config["SESSION_USE_SIGNER"] = True
+Session(app)
 
 SYSTEM_PROMPT = (
     "You are Pawsitive Coach, an expert dog training assistant who specializes in "

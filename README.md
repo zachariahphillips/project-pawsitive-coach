@@ -29,14 +29,19 @@ Pawsitive Coach only recommends reward-based training. It will never suggest pun
 pip install -r requirements.txt
 ```
 
-### 2. Set up your API key
+### 2. Set up your environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and replace `your-key-here` with your OpenAI API key.
-Get a key at: https://platform.openai.com/api-keys
+Edit `.env` and set:
+
+- `OPENAI_API_KEY` — your OpenAI API key. Get one at: https://platform.openai.com/api-keys
+- `FLASK_SECRET_KEY` — any long random string. Used to sign session cookies. Generate one with:
+  ```bash
+  python3 -c "import secrets; print(secrets.token_hex(32))"
+  ```
 
 ### 3. Run the web app
 
@@ -64,12 +69,13 @@ This is an AI assistant, not a substitute for professional help. For serious beh
 ## Project Structure
 
 ```
-my-first-ai-project/
+project-pawsitive-coach/
 ├── app.py              # Web app (Flask)
 ├── chat.py             # Terminal chatbot
 ├── requirements.txt    # Python dependencies
-├── .env.example        # Template for your API key
-├── .gitignore          # Keeps secrets out of GitHub
+├── .env.example        # Template for env vars (API key + session signing key)
+├── .gitignore          # Keeps secrets and session files out of GitHub
+├── flask_session/      # Server-side session store (auto-created, gitignored)
 ├── templates/
 │   └── index.html      # Chat UI
 └── README.md
