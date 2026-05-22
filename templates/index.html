@@ -21,6 +21,12 @@
             flex-direction: row;
         }
 
+        /* Visible focus ring for keyboard navigation only (mouse clicks stay clean). */
+        :focus-visible {
+            outline: 3px solid #f59e0b;
+            outline-offset: 2px;
+        }
+
         .hamburger {
             display: none;
             background: none;
@@ -171,7 +177,8 @@
             flex-shrink: 0;
         }
 
-        .chat-item:hover .chat-item-delete { display: block; }
+        .chat-item:hover .chat-item-delete,
+        .chat-item:focus-within .chat-item-delete { display: block; }
         .chat-item-delete:hover { color: #b91c1c; background: #fef2f2; }
 
         .sidebar-empty {
@@ -384,6 +391,12 @@
             gap: 12px;
             text-decoration: none;
             cursor: pointer;
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
+            color: inherit;
+            text-align: left;
         }
 
         .header-logo {
@@ -1243,7 +1256,7 @@
         </div>
         <div class="sidebar-label">Chat History</div>
         <div class="chat-list" id="chat-list"></div>
-        <div id="dog-card" class="dog-card" onclick="showProfilePage()"></div>
+        <div id="dog-card" class="dog-card" role="button" tabindex="0" aria-label="Dog profile" onclick="showProfilePage()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showProfilePage();}"></div>
     </aside>
 
     <div class="main-content">
@@ -1253,15 +1266,15 @@
                 <span></span>
                 <span></span>
             </button>
-            <a class="header-left" onclick="showWelcome()">
-                <img src="/static/logo.png" alt="Pawsitive Coach" class="header-logo">
+            <button type="button" class="header-left" onclick="showWelcome()" aria-label="Pawsitive Coach — return to welcome screen">
+                <img src="/static/logo.png" alt="" class="header-logo">
                 <h1>Pawsitive <span>Coach</span></h1>
                 <span class="badge">POSITIVE REINFORCEMENT</span>
-            </a>
+            </button>
             <div style="display: flex; align-items: center; gap: 12px;">
-                <span class="theme-label" id="theme-icon">☀️</span>
+                <span class="theme-label" id="theme-icon" aria-hidden="true">☀️</span>
                 <label class="theme-toggle">
-                    <input type="checkbox" id="dark-toggle" onchange="toggleDarkMode()">
+                    <input type="checkbox" id="dark-toggle" onchange="toggleDarkMode()" aria-label="Toggle dark mode">
                     <div class="toggle-track"></div>
                 </label>
             </div>
@@ -1273,10 +1286,10 @@
                 <h2>Hey there, dog parent!</h2>
                 <p>I'm your positive reinforcement training coach. Tell me about your pup and I'll help with training, behavior, and building a great bond together.</p>
                 <div class="suggestions">
-                    <div class="suggestion" onclick="sendSuggestion(this)">My puppy keeps biting my hands during play</div>
-                    <div class="suggestion" onclick="sendSuggestion(this)">How do I teach loose-leash walking?</div>
-                    <div class="suggestion" onclick="sendSuggestion(this)">My rescue dog is afraid of strangers</div>
-                    <div class="suggestion" onclick="sendSuggestion(this)">Best way to crate train?</div>
+                    <button type="button" class="suggestion" onclick="sendSuggestion(this)">My puppy keeps biting my hands during play</button>
+                    <button type="button" class="suggestion" onclick="sendSuggestion(this)">How do I teach loose-leash walking?</button>
+                    <button type="button" class="suggestion" onclick="sendSuggestion(this)">My rescue dog is afraid of strangers</button>
+                    <button type="button" class="suggestion" onclick="sendSuggestion(this)">Best way to crate train?</button>
                 </div>
             </div>
         </div>
@@ -1388,25 +1401,39 @@
             sorted.forEach(chat => {
                 const item = document.createElement('div');
                 item.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
+                item.setAttribute('role', 'button');
+                item.setAttribute('tabindex', '0');
+                item.setAttribute('aria-label', `Open chat: ${chat.title}`);
+                const activate = () => { loadChat(chat.id); closeSidebar(); };
                 item.onclick = (e) => {
                     if (e.target.classList.contains('chat-item-delete')) return;
                     if (e.target.tagName === 'INPUT' && !e.target.readOnly) return;
-                    loadChat(chat.id);
-                    closeSidebar();
+                    activate();
+                };
+                item.onkeydown = (e) => {
+                    if (e.target !== item) return;
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        activate();
+                    }
                 };
 
                 const title = document.createElement('input');
                 title.className = 'chat-item-title';
                 title.value = chat.title;
                 title.readOnly = true;
-                title.ondblclick = (e) => { e.stopPropagation(); title.readOnly = false; title.focus(); title.select(); };
-                title.onblur = () => { title.readOnly = true; renameChat(chat.id, title.value); };
+                title.tabIndex = -1;
+                title.setAttribute('aria-hidden', 'true');
+                title.ondblclick = (e) => { e.stopPropagation(); title.readOnly = false; title.tabIndex = 0; title.focus(); title.select(); };
+                title.onblur = () => { title.readOnly = true; title.tabIndex = -1; renameChat(chat.id, title.value); };
                 title.onkeydown = (e) => { if (e.key === 'Enter') { title.blur(); } };
 
                 const del = document.createElement('button');
+                del.type = 'button';
                 del.className = 'chat-item-delete';
-                del.innerHTML = '✕';
+                del.innerHTML = '<span aria-hidden="true">✕</span>';
                 del.title = 'Delete chat';
+                del.setAttribute('aria-label', `Delete chat: ${chat.title}`);
                 del.onclick = (e) => { e.stopPropagation(); deleteChat(chat.id); };
 
                 item.appendChild(title);
@@ -1798,6 +1825,7 @@
 
             const icon = document.createElement('span');
             icon.className = 'dog-card-icon';
+            icon.setAttribute('aria-hidden', 'true');
             icon.textContent = '🐾';
 
             const info = document.createElement('div');
@@ -1816,11 +1844,13 @@
                     detail.textContent = detailText;
                     info.appendChild(detail);
                 }
+                dogCardEl.setAttribute('aria-label', `Edit dog profile for ${profile.name}`);
             } else {
                 const cta = document.createElement('div');
                 cta.className = 'dog-card-cta';
                 cta.textContent = "Set up your dog's profile";
                 info.appendChild(cta);
+                dogCardEl.setAttribute('aria-label', "Set up your dog's profile");
             }
 
             dogCardEl.appendChild(icon);
