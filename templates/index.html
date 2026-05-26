@@ -719,6 +719,43 @@
             transform: none;
         }
 
+        #send-btn .stop-icon { display: none; }
+
+        #send-btn.stopping {
+            background: linear-gradient(135deg, #dc2626, #b91c1c);
+            box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+        }
+        #send-btn.stopping:hover {
+            background: linear-gradient(135deg, #b91c1c, #991b1b);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+        #send-btn.stopping .send-text,
+        #send-btn.stopping .send-icon { display: none; }
+        #send-btn.stopping .stop-icon { display: block; }
+
+        .toast {
+            position: fixed;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: #3d2c1e;
+            color: #fef3c7;
+            padding: 10px 18px;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 700;
+            font-family: inherit;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            z-index: 200;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
         .char-counter {
             max-width: 700px;
             margin: 8px auto 0;
@@ -1108,6 +1145,11 @@
         body.dark .hamburger span { background: #c4a882; }
         body.dark .hamburger:hover { background: #3d2e1a; }
 
+        body.dark .toast {
+            background: #fef3c7;
+            color: #3d2c1e;
+        }
+
         /* ---- Mobile layout (≤640px) ---- */
         @media (max-width: 640px) {
             .hamburger {
@@ -1303,6 +1345,9 @@
                     <svg class="send-icon" viewBox="0 0 24 24" fill="currentColor" width="20" height="20" aria-hidden="true">
                         <path d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/>
                     </svg>
+                    <svg class="stop-icon" viewBox="0 0 24 24" fill="currentColor" width="18" height="18" aria-hidden="true">
+                        <rect x="6" y="6" width="12" height="12" rx="2"/>
+                    </svg>
                 </button>
             </form>
             <div id="char-counter" class="char-counter">
@@ -1311,6 +1356,7 @@
             </div>
         </div>
         <div class="disclaimer">AI-generated advice — for serious behavioral issues, consult a certified trainer (CPDT-KA) or veterinary behaviorist.</div>
+        <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
         <div class="profile-page" id="profile-page" style="display:none;">
             <div class="profile-form">
@@ -1606,7 +1652,7 @@
                 chip.type = 'button';
                 chip.textContent = text;
                 chip.onclick = () => {
-                    if (sendBtn.disabled) return;
+                    if (sendBtn.disabled || isAwaitingResponse) return;
                     messageInput.value = text;
                     sendMessage(new Event('submit'));
                 };
@@ -1701,9 +1747,32 @@
         const charCounterNum = document.getElementById('char-counter-num');
 
         let isAwaitingResponse = false;
+        let abortController = null;
+        const toastEl = document.getElementById('toast');
+        let toastTimer = null;
 
         function applySendDisabled() {
-            sendBtn.disabled = isAwaitingResponse || messageInput.value.length > CHAR_LIMIT;
+            if (isAwaitingResponse) {
+                // Button is now a "Stop" button — always enabled so the user can cancel.
+                sendBtn.disabled = false;
+                sendBtn.classList.add('stopping');
+                sendBtn.setAttribute('aria-label', 'Stop generating');
+            } else {
+                sendBtn.disabled = messageInput.value.length > CHAR_LIMIT;
+                sendBtn.classList.remove('stopping');
+                sendBtn.setAttribute('aria-label', 'Send');
+            }
+        }
+
+        function cancelInFlight() {
+            if (abortController) abortController.abort();
+        }
+
+        function showToast(message) {
+            toastEl.textContent = message;
+            toastEl.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2500);
         }
 
         function autoResizeInput() {
@@ -1745,6 +1814,7 @@
 
         async function sendMessage(e) {
             e.preventDefault();
+            if (isAwaitingResponse) return;
             const text = messageInput.value.trim();
             if (!text) return;
             if (text.length > CHAR_LIMIT) return;
@@ -1757,11 +1827,15 @@
             addMessage('user', text);
             showTyping();
 
+            abortController = new AbortController();
+            const controller = abortController;
+
             try {
                 const res = await fetch('/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text })
+                    body: JSON.stringify({ message: text }),
+                    signal: controller.signal
                 });
                 const data = await res.json();
                 removeTyping();
@@ -1777,17 +1851,42 @@
                 }
             } catch (err) {
                 removeTyping();
-                const errEl = document.createElement('div');
-                errEl.className = 'error';
-                errEl.textContent = 'Connection error. Is the server running?';
-                chatContainer.appendChild(errEl);
+                if (controller.signal.aborted) {
+                    showToast('Response cancelled');
+                    // Drop the cancelled user message from server-side conversation
+                    // so the AI doesn't see it on the next turn.
+                    const chat = getCurrentChat();
+                    if (chat) {
+                        const cleanHistory = chat.messages
+                            .slice(0, -1)
+                            .map(m => ({ role: m.role, content: m.content }));
+                        fetch('/restore', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ messages: cleanHistory })
+                        });
+                    }
+                } else {
+                    const errEl = document.createElement('div');
+                    errEl.className = 'error';
+                    errEl.textContent = 'Connection error. Is the server running?';
+                    chatContainer.appendChild(errEl);
+                }
             }
 
+            abortController = null;
             isAwaitingResponse = false;
             applySendDisabled();
             messageInput.focus();
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
+
+        sendBtn.addEventListener('click', (e) => {
+            if (isAwaitingResponse) {
+                e.preventDefault();
+                cancelInFlight();
+            }
+        });
 
         function sendSuggestion(el) {
             messageInput.value = el.textContent;
