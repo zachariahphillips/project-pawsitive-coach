@@ -151,15 +151,21 @@ def chat():
         raw = response.choices[0].message.content or "{}"
         try:
             parsed = json.loads(raw)
-            reply = (parsed.get("reply") or "").strip()
-            raw_followups = parsed.get("followups") or []
-            followups = [
-                f.strip() for f in raw_followups
-                if isinstance(f, str) and f.strip()
-            ][:2]
         except json.JSONDecodeError:
-            reply = raw
-            followups = []
+            app.logger.warning("AI returned malformed JSON: %r", raw[:500])
+            session["conversation"].pop()
+            return jsonify({
+                "error": "The coach got a little tongue-tied. Give it another try!"
+            }), 502
+
+        reply = (parsed.get("reply") or "").strip()
+        raw_followups = parsed.get("followups")
+        if not isinstance(raw_followups, list):
+            raw_followups = []
+        followups = [
+            f.strip() for f in raw_followups
+            if isinstance(f, str) and f.strip()
+        ][:2]
 
         if not reply:
             session["conversation"].pop()
